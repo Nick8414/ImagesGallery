@@ -1,19 +1,19 @@
 import React from 'react'
 
 const RangeSlider = props => {
-  const { name, commentQty, sliderChange } = props
+  const { name, minComments, sliderChange, maxComments } = props
   return (
     <form>
       <div className='form-group'>
-        <label htmlFor='formControlRange'>Current filter: {commentQty}</label>
+        <label htmlFor='formControlRange'>Current filter: {minComments}</label>
         <input
           type='range'
           className='form-control-range'
           id='formControlRange'
-          min='10'
-          max='1500'
-          step='10'
-          value={commentQty}
+          min={0}
+          max={maxComments}
+          step={10}
+          value={minComments}
           name={name}
           onChange={sliderChange}
         />

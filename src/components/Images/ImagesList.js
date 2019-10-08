@@ -6,7 +6,7 @@ const ImagesList = props => {
   return (
     <div className='row mt-4'>
       {images.map(image => {
-        return <ImageItem key={image.data.id} image={image} />
+        return <ImageItem key={image.data.id} image={image.data} />
       })}
     </div>
   )

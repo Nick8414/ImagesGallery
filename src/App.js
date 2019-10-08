@@ -11,22 +11,17 @@ export default class App extends React.Component {
 
     this.state = {
       images: [],
-      viewImages: [],
       isLoading: true,
       autoRefreshStatus: false,
       intervalID: '',
-      commentQty: 200
+      minComments: 0,
+      maxComments: 0
     }
   }
 
   sliderChange = event => {
-    const newImagesArray = this.filterImageByCommentsQty(
-      this.state.images,
-      this.state.commentQty
-    )
     this.setState({
-      [event.target.name]: event.target.value,
-      viewImages: newImagesArray
+      minComments: Number(event.target.value)
     })
   }
 
@@ -39,78 +34,85 @@ export default class App extends React.Component {
       },
       () => {
         if (this.state.autoRefreshStatus) {
-          let intervalId = setInterval(() => {
-            this.getImages()
-          }, 3000)
-          this.setState({ intervalId: intervalId })
+          this.intervalId = setInterval(this.getImages, 3000)
         } else {
-          clearInterval(this.state.intervalId)
+          clearInterval(this.intervalId)
         }
       }
     )
   }
 
-  filterImageByCommentsQty = (images, commentQty) => {
-    const newImagesArray = images.filter(image => {
-      return image.data.num_comments >= commentQty
-    })
-    return newImagesArray
-  }
-
-  sortImagesByCommentsCount = images => {
-    return images.sort((a, b) => {
-      if (b.data.num_comments > a.data.num_comments) {
-        return 1
-      } else if (a.data.num_comments > b.data.num_comments) {
-        return -1
-      } else {
-        return 0
-      }
-    })
-  }
-
   getImages = async () => {
     const link = API_URL
-    const images = await fetchApi(`${link}/r/aww.json`)
-    const sortedImages = this.sortImagesByCommentsCount(images.data.children)
-    const filteredImages = this.filterImageByCommentsQty(
-      sortedImages,
-      this.state.commentQty
-    )
-    this.setState({
-      images: sortedImages,
-      viewImages: filteredImages,
-      isLoading: false
-    })
+
+    try {
+      this.setState({ isLoading: true })
+      const images = await fetchApi(`${link}/r/aww.json`)
+      const imagesArr = images.data.children
+      let newMaxComments = Math.max.apply(
+        Math,
+        imagesArr.map(function (el) {
+          return el.data.num_comments
+        })
+      )
+
+      this.setState({
+        images: imagesArr,
+        maxComments: newMaxComments,
+        isLoading: false
+      })
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   componentDidMount () {
     this.getImages()
   }
 
-  render () {
-    const { viewImages, isLoading, autoRefreshStatus, commentQty } = this.state
-    return (
-      <React.Fragment>
-        <div className='container'>
-          {isLoading && <Spinner />}
-          <h1>Top commented</h1>
-          <button
-            type='button'
-            className='btn btn-secondary btn-sm'
-            onClick={this.autoRefresh}
-          >
-            {!autoRefreshStatus ? 'Start auto-refresh' : 'Stop auto-refresh'}
-          </button>
-          <RangeSlider
-            name='commentQty'
-            commentQty={commentQty}
-            sliderChange={this.sliderChange}
-          />
+  getImagesByComments = (images, minComments) =>
+    images
+      .filter(el => el.data.num_comments >= minComments)
+      .sort((a, b) => b.data.num_comments - a.data.num_comments)
 
-          <ImagesList images={viewImages} />
-        </div>
-      </React.Fragment>
+  render () {
+    const {
+      images,
+      isLoading,
+      autoRefreshStatus,
+      minComments,
+      maxComments
+    } = this.state
+    const imagesSortByComments = this.getImagesByComments(images, minComments)
+
+    return (
+      <div className='container'>
+        {isLoading ? (
+          <Spinner />
+        ) : (
+          <div>
+            <h1>Top commented</h1>
+            <button
+              type='button'
+              className='btn btn-secondary btn-sm'
+              onClick={this.autoRefresh}
+            >
+              {!autoRefreshStatus ? 'Start auto-refresh' : 'Stop auto-refresh'}
+            </button>
+            <RangeSlider
+              name='minComments'
+              minComments={minComments}
+              maxComments={maxComments}
+              sliderChange={this.sliderChange}
+            />
+            {imagesSortByComments.length > 0 ? (
+              <ImagesList images={imagesSortByComments} />
+            ) : (
+              <p>No results found matching your criteria</p>
+            )}
+          </div>
+        )}
+      </div>
     )
   }
 }
